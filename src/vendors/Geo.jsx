@@ -1,122 +1,89 @@
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
+class RotateNorthControl {
+  constructor() {
+    this._btn = document.createElement('button');
+    this._btn.type = 'button';
+    this._btn.innerText = 'N';
+    this._btn.onclick = () => {
+      if (this._map) {
+        this._map.easeTo({ bearing: 0 });
+      }
+    };
 
-import React, { useState } from 'react';
-import PropTypes from 'prop-types'
-
-//The real GEO OpenLayers packages
-import 'ol/ol.css';
-import {Map, View} from 'ol/index.js';
-import {Tile as TileLayer} from 'ol/layer.js';
-import {XYZ} from 'ol/source';
-//import ZoomSlider from 'ol/control/ZoomSlider.js';
-import {fromLonLat} from 'ol/proj.js';
-import {Control, defaults as defaultControls} from 'ol/control.js';
-
-
-
-class RotateNorthControl extends Control {
-  /**
-   * @param {Object} [opt_options] Control options.
-   */
-  constructor(opt_options) {
-    const options = opt_options || {};
-
-    const button = document.createElement('button');
-    button.innerHTML = 'N';
-
-  
-    const element = document.createElement('div');
-    element.className = 'rotate-north ol-unselectable ol-control';
-    element.appendChild(button);
-
-    super({
-      element: element,
-      target: options.target,
-    });
-
-    button.addEventListener('click', this.handleRotateNorth.bind(this), false);
+    this._container = document.createElement('div');
+    this._container.className = 'maplibre-ctrl maplibre-ctrl-group';
+    this._container.appendChild(this._btn);
   }
 
-  handleRotateNorth() {
-    this.getMap().getView().setRotation(0);
+  onAdd(map) {
+    this._map = map;
+    return this._container;
+  }
+
+  onRemove() {
+    this._container.parentNode.removeChild(this._container);
+    this._map = undefined;
   }
 }
 
 function Geo(props) {
-  const [geoRef, setGeoRef] = React.useState();
-  const  geoId = Math.random().toString(16).slice(2);
+  const [mapContainer, setMapContainer] = useState(null);
 
-  const variants = [
-    'standaard',
-		'pastel',
-		'grijs',
-		'water',
-  ];
-
-  var varaint = variants[0]
- 
-  const useGeoRef = React.useCallback(ref => {
-    setGeoRef(ref);
-  }, []);
-  
-  React.useEffect(() => {
-    if (geoRef && !props.skipRedraw()) {
-      // Rebuild the GEOL7
-      geoRef.innerHTML = "<div id='GEO_"+ geoId+ "' style='height:"+props.height+"px;position:relative'></div>"
-      //const geoCanvas = document.getElementById("GEO_"+geoId) 
-
-      //The base layer containg the streetmap
-      var baseLayer = new TileLayer({
-        source: new XYZ({
-          url: //'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg'
-          'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png'
-        })
-      })
-
-      var map = new Map({
-        controls: defaultControls().extend([new RotateNorthControl()]),
-        view: new View({
-          center:  fromLonLat(props.center),
-          zoom: props.zoom,
-          maxZoom: 18, //To make property
-        }),
-        target: 'GEO_'+ geoId,
-        layers: [baseLayer]
+  useEffect(() => {
+    if (mapContainer && !props.skipRedraw()) {
+      const map = new maplibregl.Map({
+        container: mapContainer,
+        style: props.mapStyleUrl, // Use the styleUrl prop here
+        center: props.center,
+        zoom: props.zoom,
+        pitch: props.pitch,
       });
 
+      map.on('load', () => {
+        // Add the GeoJSON layer here
+        map.addSource('geojson-layer', {
+          type: 'geojson',
+          data: props.geoJson,
+        });
 
-      if (!props.showLogo) {
-        //geoCanvas.getElementsByClassName('l7-control-logo')[0].style="display:none" 
-      }
+        map.addLayer({
+          id: 'geojson-layer',
+          type: 'fill', // Default type, adjust based on your GeoJSON geometry
+          source: 'geojson-layer',
+          layout: {},
+          paint: {
+            'fill-color': '#888888', // Example fill color
+            'fill-opacity': 0.5,
+          },
+        });
+      });
+
+      const rotateNorthControl = new RotateNorthControl();
+      map.addControl(rotateNorthControl, 'top-right');
+
+      // Cleanup function to remove map on unmount
+      return () => map.remove();
     }
-  }, [geoRef, props.center,props.zoom,props.pitch,props.geoJson,
-        props.showLogo,props.onDataChange]);
+  }, [mapContainer, props]);
 
-  return (
-    <div
-      ref={useGeoRef}
-      style={{ height: '100%', width: '100%' }}
-    ></div>
-  );
+  return <div ref={setMapContainer} style={{ height: '100%', width: '100%' }}></div>;
 }
 
 Geo.propTypes = {
   width: PropTypes.number,
-  height: PropTypes.number,
-  center: PropTypes.array,
-  zoom: PropTypes.number,
+  height: PropTypes.number.isRequired,
+  center: PropTypes.array.isRequired,
+  zoom: PropTypes.number.isRequired,
   pitch: PropTypes.number,
-  geoJson: PropTypes.object,
-
-  /*
-  values: PropTypes.object,
-  svgDownload : PropTypes.bool,
-  imageName : PropTypes.string,
-  designer : PropTypes.bool,
-  */
-  showLogo : PropTypes.bool,
+  geoJson: PropTypes.object.isRequired,
+  mapStyleUrl: PropTypes.string.isRequired, // Ensure this prop is passed
+  showLogo: PropTypes.bool,
   onDataChange: PropTypes.func,
-  skipRedraw: PropTypes.func,
-}
+  skipRedraw: PropTypes.func.isRequired,
+};
 
 export default Geo;
