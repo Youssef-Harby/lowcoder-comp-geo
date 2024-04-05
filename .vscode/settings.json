@@ -1,0 +1,27 @@
+{
+  "editor.formatOnSave": true,
+  "cody.autocomplete.disableInsideComments": true,
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "cSpell.words": [
+    "coverpage",
+    "docsify",
+    "eventlog",
+    "geospatial",
+    "lowcoder",
+    "lowcoderdev",
+    "npmjs",
+    "Openlayers",
+    "sjhoeksma"
+  ]
+}
